@@ -206,6 +206,22 @@ describe('GET /requests/:id — decoded summary and signature state', () => {
     expect(signatureState.signers.every((signer) => signer.signed === false)).toBe(true);
   });
 
+  it('degrades gracefully when the source account no longer exists on the network', async () => {
+    await setup([1], 1);
+    const { body } = await createRequest();
+    ctx.accountGateway.removeAccount(ctxSource);
+    const { status, body: fetched } = await getJson(ctx.app, `/requests/${body.id}`);
+    expect(status).toBe(200);
+    const signatureState = fetched.signatureState as {
+      accountStatus: string;
+      threshold: number | null;
+      signers: unknown[];
+    };
+    expect(signatureState.accountStatus).toBe('not_found');
+    expect(signatureState.threshold).toBeNull();
+    expect(signatureState.signers).toEqual([]);
+  });
+
   it('returns a uniform 404 for an unknown id', async () => {
     await setup([1], 1);
     const unknown = 'f'.repeat(32);

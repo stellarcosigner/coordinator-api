@@ -313,6 +313,8 @@ function describeOperation(op: OperationRecord): OperationSummary {
         details,
       };
     case 'invokeHostFunction':
+      // TODO: decode the host function (contract id + function name) for Soroban
+      // operations so the summary is as complete as for classic operations.
       return {
         type: op.type,
         description: 'Invoke a Soroban smart contract function',

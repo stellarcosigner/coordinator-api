@@ -27,6 +27,11 @@ export class FakeAccountGateway implements AccountGateway {
     this.accounts.set(sourceAccount, state);
   }
 
+  /** Simulates the account being merged away / deleted on-chain. */
+  removeAccount(sourceAccount: string): void {
+    this.accounts.delete(sourceAccount);
+  }
+
   failWith(error: Error): void {
     this.failure = error;
   }

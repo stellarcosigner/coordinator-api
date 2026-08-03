@@ -151,7 +151,8 @@ export class Store {
       try {
         await client.query('BEGIN');
         await client.query(sql);
-        await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
+        // Idempotent even if two instances boot and apply the same migration concurrently.
+        await client.query('INSERT INTO schema_migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING', [file]);
         await client.query('COMMIT');
       } catch (error) {
         try {
@@ -314,7 +315,7 @@ export class Store {
   async recordSubmitFailure(id: string, errorMessage: string, attempts: number): Promise<void> {
     await this.pool.query(
       `UPDATE pending_requests
-       SET status = 'pending', submit_attempts = $2, last_submit_error = $3
+       SET status = 'pending', submitted_at = NULL, submit_attempts = $2, last_submit_error = $3
        WHERE id = $1`,
       [id, attempts, errorMessage.slice(0, 2000)],
     );

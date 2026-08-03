@@ -7,11 +7,12 @@
  * before signing) and the account's CURRENT signer list/threshold, resolved
  * live from the network.
  */
+import { NotFoundError } from '@stellar/stellar-sdk';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AppDeps } from './app.js';
+import { describeTransaction } from './summary.js';
 import { parseTransaction } from './transaction.js';
 import { currentWeightSum, resolveAccountState } from './verify.js';
-import { describeTransaction } from './summary.js';
 
 export interface FetchParams {
   id: string;
@@ -39,11 +40,30 @@ export async function handleFetch(
   }
 
   const signatures = await deps.store.getRequestSignatures(id);
+  const baseResponse = {
+    id: row.id,
+    sourceAccount: row.sourceAccount,
+    network: row.network,
+    status: row.status,
+    createdAt: row.createdAt,
+    expiresAt: row.expiresAt,
+    submittedAt: row.submittedAt,
+    summary: describeTransaction(transaction),
+  };
 
   let accountState;
   try {
     accountState = await resolveAccountState(deps.accountGateway, row.sourceAccount, row.network);
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      // The account was merged away or deleted. The transaction can never be
+      // submitted; still show the summary so the link-holder understands why.
+      request.log.warn({ id, sourceAccount: row.sourceAccount }, 'source account no longer exists on the network');
+      return reply.code(200).send({
+        ...baseResponse,
+        signatureState: { threshold: null, signedWeight: 0, thresholdMet: false, signers: [], accountStatus: 'not_found' },
+      });
+    }
     request.log.error({ err: error, id, sourceAccount: row.sourceAccount }, 'failed to fetch live account state');
     return reply.code(502).send({ error: 'unable to reach the Stellar network' });
   }
@@ -53,15 +73,9 @@ export async function handleFetch(
   const signedWeight = currentWeightSum(accountState, signedKeys);
 
   return reply.code(200).send({
-    id: row.id,
-    sourceAccount: row.sourceAccount,
-    network: row.network,
-    status: row.status,
-    createdAt: row.createdAt,
-    expiresAt: row.expiresAt,
-    submittedAt: row.submittedAt,
-    summary: describeTransaction(transaction),
+    ...baseResponse,
     signatureState: {
+      accountStatus: 'ok',
       threshold: accountState.threshold,
       signedWeight,
       thresholdMet: signedWeight >= accountState.threshold,

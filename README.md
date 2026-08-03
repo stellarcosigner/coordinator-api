@@ -143,6 +143,7 @@ Returns everything a signer needs to review before signing:
     "signaturesAttachedToEnvelope": 0
   },
   "signatureState": {             // resolved LIVE from the network at read time
+    "accountStatus": "ok",        // "ok" | "not_found" (account merged away/deleted)
     "threshold": 2,
     "signedWeight": 1,
     "thresholdMet": false,
