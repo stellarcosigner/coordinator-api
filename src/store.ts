@@ -206,7 +206,7 @@ export class Store {
    */
   async recordSignatureAndMaybeClaim(
     requestId: string,
-    signature: StoredSignature,
+    signature: Omit<StoredSignature, 'createdAt'>,
     threshold: number,
     signerWeights: ReadonlyMap<string, number>,
   ): Promise<RecordSignatureResult> {

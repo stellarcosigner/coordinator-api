@@ -45,3 +45,10 @@ export interface StoredSignature {
   weight: number;
   createdAt: string;
 }
+
+/** Minimal structured-logger surface used by background jobs. Fastify's logger satisfies it. */
+export interface Logger {
+  info(obj: unknown, msg?: string): void;
+  warn(obj: unknown, msg?: string): void;
+  error(obj: unknown, msg?: string): void;
+}

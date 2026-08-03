@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from './app.js';
 import { handleCreate, type CreateRequestBody } from './create.js';
 import { handleFetch, type FetchParams } from './fetch.js';
+import { handleSign, type SignParams, type SignRequestBody } from './sign.js';
 
 const REQUEST_ID_PATTERN = '^[0-9a-f]{32}$';
 
@@ -47,5 +48,24 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps): Promi
     '/requests/:id',
     { schema: { params: requestParamsSchema } },
     async (request, reply) => handleFetch(request, reply, deps),
+  );
+
+  app.post<{ Params: SignParams; Body: SignRequestBody }>(
+    '/requests/:id/sign',
+    {
+      schema: {
+        params: requestParamsSchema,
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['signerPublicKey', 'signature'],
+          properties: {
+            signerPublicKey: { type: 'string' },
+            signature: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => handleSign(request, reply, deps),
   );
 }
