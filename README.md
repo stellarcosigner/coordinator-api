@@ -263,6 +263,36 @@ There is **no `dotenv` package** in this project. Copy
 `start`, and `db:migrate` scripts already pass `--env-file=.env`, so **do not**
 add a `dotenv.config()` call or the dotenv dependency. It would be redundant.
 
+## Deployment
+
+This API is deployed on Render's free web service tier. Free instances spin
+down after 15 minutes of inactivity, so the first request after idle time can
+take 30-60 seconds to respond while the instance wakes up.
+
+The database runs on Neon's free tier, which also scales to zero after 5
+minutes of inactivity. A cold query has a similar wake-up delay for the same
+reason.
+
+This means the deployed instance is not suitable for latency-sensitive or
+production use as-is. It is a genuinely free, always-reachable but not
+always-warm deployment, appropriate for a demo, a low-traffic tool, or
+evaluation, not for anything time-critical.
+
+Required Render environment variables (see [`.env.example`](.env.example)):
+
+```bash
+DATABASE_URL=postgres://<user>:<password>@<host>.neon.tech/<database>?sslmode=require
+TESTNET_HORIZON_URL=https://horizon-testnet.stellar.org
+MAINNET_HORIZON_URL=https://horizon.stellar.org
+CORS_ORIGIN=  # optional: your frontend origin; comma-separated for multiple
+```
+
+`DATABASE_URL` must point at the Neon connection string with `sslmode=require`.
+
+The Render Start Command must be `node dist/index.js`, not `npm run start`.
+The `start` script assumes a local `.env` file, which does not exist on Render.
+On Render, configuration is injected directly via the dashboard instead.
+
 ## Testing
 
 Tests run against a real Postgres with the Stellar network simulated by fake
