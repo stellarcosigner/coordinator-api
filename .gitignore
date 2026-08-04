@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+scripts/
 *.log
 .env
 .env.*
