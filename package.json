@@ -1,5 +1,5 @@
 {
-  "name": "@stellarquorum/coordinator-api",
+  "name": "@stellarcosigner/coordinator-api",
   "version": "0.1.0",
   "description": "Backend for a self-hosted Stellar multisig transaction coordinator. Coordinates signatures from multiple signers and submits once the account's real on-chain threshold is met. Never holds private keys.",
   "type": "module",
