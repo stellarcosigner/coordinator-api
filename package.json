@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "db:migrate": "tsx --env-file=.env src/migrate.ts"
   },
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "dependencies": {
     "@fastify/cors": "^11.3.0",
     "@stellar/stellar-sdk": "^16.2.0",
