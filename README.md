@@ -324,7 +324,13 @@ npm run lint
 Each test file gets an isolated throwaway database. In CI the Postgres service
 container is configured automatically (`.github/workflows/ci.yml`).
 
+## Contributors
+
+<a href="https://github.com/stellarcosigner/coordinator-api/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=stellarcosigner/coordinator-api" />
+</a>
+
 ## License
 
-UNLICENSED — internal/self-hosted. See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[SECURITY.md](SECURITY.md).
+Apache License 2.0. See [LICENSE](LICENSE), [CONTRIBUTING.md](CONTRIBUTING.md),
+and [SECURITY.md](SECURITY.md).
