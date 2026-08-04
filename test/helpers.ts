@@ -18,6 +18,17 @@ import type { AccountGateway, AccountState, NetworkName, SubmissionGateway, Subm
 
 const ADMIN_URL = process.env.TEST_DATABASE_ADMIN_URL ?? 'postgres://postgres:postgres@localhost:5433/postgres';
 
+/**
+ * Builds the connection URL for a test database, reusing the credentials,
+ * host, and port from the admin URL so the harness works with any local or CI
+ * Postgres (e.g. one that does not use the default postgres/postgres creds).
+ */
+function testDatabaseUrl(name: string): string {
+  const url = new URL(ADMIN_URL);
+  url.pathname = `/${name}`;
+  return url.toString();
+}
+
 export class FakeAccountGateway implements AccountGateway {
   private readonly accounts = new Map<string, AccountState>();
   private failure: Error | null = null;
@@ -83,7 +94,7 @@ async function getSharedDatabase(): Promise<{ name: string; url: string }> {
   const adminPool = new Pool({ connectionString: ADMIN_URL });
   await adminPool.query(`CREATE DATABASE "${name}"`);
   await adminPool.end();
-  sharedDb = { name, url: `postgres://postgres:postgres@localhost:5433/${name}` };
+  sharedDb = { name, url: testDatabaseUrl(name) };
   return sharedDb;
 }
 
