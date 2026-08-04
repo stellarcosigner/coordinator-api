@@ -1,0 +1,168 @@
+<svg viewBox="0 0 850 320" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070A12" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#0B0F19" />
+    </linearGradient>
+
+    <!-- Accent Gradients -->
+    <linearGradient id="primary-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="50%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+
+    <linearGradient id="emerald-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#059669" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Card Background Gradient -->
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="glow-filter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="subtle-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Grid Pattern -->
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#1E293B" stroke-width="0.75" stroke-opacity="0.5" />
+      <circle cx="32" cy="32" r="1" fill="#334155" opacity="0.4" />
+    </pattern>
+  </defs>
+
+  <style>
+    .title { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 34px; }
+    .subtitle { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-weight: 400; font-size: 14px; fill: #94A3B8; }
+    .tag-text { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 11px; fill: #34D399; letter-spacing: 1.2px; }
+    .badge-text { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-weight: 600; font-size: 12px; fill: #CBD5E1; }
+    .code-text { font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-weight: 600; font-size: 11px; }
+  </style>
+
+  <!-- Base Canvas -->
+  <rect width="850" height="320" rx="16" fill="url(#bg-grad)" stroke="#1E293B" stroke-width="1.5" />
+
+  <!-- Background Grid -->
+  <rect width="850" height="320" rx="16" fill="url(#grid)" />
+
+  <!-- Glowing Ambient Blobs -->
+  <circle cx="640" cy="160" r="140" fill="url(#emerald-glow)" filter="url(#glow-filter)" />
+  <circle cx="200" cy="100" r="100" fill="url(#cyan-glow)" filter="url(#glow-filter)" />
+
+  <!-- LEFT SIDE: Content & Branding -->
+
+  <!-- Pill Badge: Service Type -->
+  <g transform="translate(48, 44)">
+    <rect width="186" height="26" rx="13" fill="#0F172A" stroke="#059669" stroke-opacity="0.4" stroke-width="1" />
+    <circle cx="15" cy="13" r="4" fill="#34D399" />
+    <text x="28" y="17" class="tag-text">STELLAR MULTISIG API</text>
+  </g>
+
+  <!-- Title -->
+  <text x="48" y="108" class="title" fill="#FFFFFF">Coordinator</text>
+  <text x="48" y="148" class="title" fill="url(#primary-grad)">REST Backend</text>
+
+  <!-- Subtitle -->
+  <text x="48" y="184" class="subtitle">Self-hosted service for collecting signatures, resolving</text>
+  <text x="48" y="204" class="subtitle">live thresholds, and auto-submitting to Horizon.</text>
+
+  <!-- Feature Chips / Badges -->
+  <!-- Chip 1: Fastify + Node 22 -->
+  <g transform="translate(48, 238)">
+    <rect width="138" height="32" rx="8" fill="url(#card-grad)" stroke="#334155" stroke-width="1" />
+    <!-- Server Icon -->
+    <path d="M4 6C4 4.9 4.9 4 6 4H18C19.1 4 20 4.9 20 6V9C20 10.1 19.1 11 18 11H6C4.9 11 4 10.1 4 9V6ZM4 15C4 13.9 4.9 13 6 13H18C19.1 13 20 13.9 20 15V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V15Z" stroke="#34D399" stroke-width="1.3" fill="none" transform="translate(2, 2) scale(0.7)" />
+    <text x="32" y="20" class="badge-text">Node 22 + Fastify</text>
+  </g>
+
+  <!-- Chip 2: Postgres Storage -->
+  <g transform="translate(196, 238)">
+    <rect width="130" height="32" rx="8" fill="url(#card-grad)" stroke="#334155" stroke-width="1" />
+    <!-- Database Icon -->
+    <path d="M12 3C7.58 3 4 4.34 4 6V18C4 19.66 7.58 21 12 21C16.42 21 20 19.66 20 18V6C20 4.34 16.42 3 12 3ZM20 12C20 13.66 16.42 15 12 15C7.58 15 4 13.66 4 12M20 6C20 7.66 16.42 9 12 9C7.58 9 4 7.66 4 6" stroke="#38BDF8" stroke-width="1.3" fill="none" transform="translate(2, 2) scale(0.7)" />
+    <text x="32" y="20" class="badge-text">Postgres Pool</text>
+  </g>
+
+  <!-- Chip 3: Live Horizon -->
+  <g transform="translate(336, 238)">
+    <rect width="138" height="32" rx="8" fill="url(#card-grad)" stroke="#334155" stroke-width="1" />
+    <!-- Network Icon -->
+    <path d="M12 2L2 7L12 12L22 7L12 2Z M2 17L12 22L22 17 M2 12L12 17L22 12" stroke="#818CF8" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(2, 2) scale(0.7)" />
+    <text x="32" y="20" class="badge-text">Live Network Ver</text>
+  </g>
+
+
+  <!-- RIGHT SIDE: Architecture & API Endpoint Visual -->
+
+  <g transform="translate(540, 50)">
+
+    <!-- Main Backend API Window Card -->
+    <rect width="260" height="220" rx="12" fill="#0B0F19" stroke="#1E293B" stroke-width="1.5" filter="url(#subtle-glow)" />
+
+    <!-- Window Title Bar -->
+    <rect width="260" height="34" rx="12" fill="#1E293B" opacity="0.6" />
+    <!-- Window buttons -->
+    <circle cx="16" cy="17" r="4" fill="#EF4444" opacity="0.8" />
+    <circle cx="28" cy="17" r="4" fill="#F59E0B" opacity="0.8" />
+    <circle cx="40" cy="17" r="4" fill="#10B981" opacity="0.8" />
+    <text x="130" y="21" text-anchor="middle" class="code-text" fill="#64748B">coordinator-api</text>
+
+    <!-- Content: Endpoints & Routing Visual -->
+
+    <!-- Route 1: POST /requests -->
+    <g transform="translate(16, 48)">
+      <rect width="228" height="32" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1" />
+      <rect x="6" y="6" width="42" height="20" rx="4" fill="#065F46" />
+      <text x="27" y="20" text-anchor="middle" class="code-text" fill="#34D399">POST</text>
+      <text x="56" y="20" class="code-text" fill="#CBD5E1">/requests</text>
+      <text x="218" y="20" text-anchor="end" class="code-text" fill="#64748B">201</text>
+    </g>
+
+    <!-- Route 2: GET /requests/:id -->
+    <g transform="translate(16, 88)">
+      <rect width="228" height="32" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1" />
+      <rect x="6" y="6" width="38" height="20" rx="4" fill="#1E40AF" />
+      <text x="25" y="20" text-anchor="middle" class="code-text" fill="#60A5FA">GET</text>
+      <text x="52" y="20" class="code-text" fill="#CBD5E1">/requests/:id</text>
+      <text x="218" y="20" text-anchor="end" class="code-text" fill="#64748B">200</text>
+    </g>
+
+    <!-- Route 3: POST /requests/:id/sign -->
+    <g transform="translate(16, 128)">
+      <rect width="228" height="32" rx="6" fill="#0F172A" stroke="#059669" stroke-width="1.2" />
+      <rect x="6" y="6" width="42" height="20" rx="4" fill="#065F46" />
+      <text x="27" y="20" text-anchor="middle" class="code-text" fill="#34D399">POST</text>
+      <text x="56" y="20" class="code-text" fill="#FFFFFF">/:id/sign</text>
+      <!-- Auto-submit trigger pulse badge -->
+      <rect x="145" y="6" width="75" height="20" rx="10" fill="#10B981" />
+      <text x="182" y="20" text-anchor="middle" class="code-text" fill="#FFFFFF">SUBMIT</text>
+    </g>
+
+    <!-- Status Output Box / Logs snippet -->
+    <g transform="translate(16, 170)">
+      <rect width="228" height="36" rx="6" fill="#030712" stroke="#1E293B" stroke-width="1" />
+      <circle cx="14" cy="18" r="3" fill="#10B981" />
+      <text x="26" y="16" class="code-text" fill="#94A3B8">Live threshold: 2/2 met</text>
+      <text x="26" y="28" class="code-text" fill="#34D399">tx submitted -&gt; Horizon</text>
+    </g>
+
+  </g>
+
+</svg>
