@@ -257,6 +257,12 @@ npm run dev                            # tsx watch, http://localhost:3000
 Migrations run automatically at boot (idempotent, tracked in
 `schema_migrations`). A manual runner is available: `npm run db:migrate`.
 
+`.env` is loaded via Node's native `--env-file` flag (Node **20.6+** required).
+There is **no `dotenv` package** in this project. Copy
+[`.env.example`](.env.example) to `.env` and adjust the values; the `dev`,
+`start`, and `db:migrate` scripts already pass `--env-file=.env`, so **do not**
+add a `dotenv.config()` call or the dotenv dependency. It would be redundant.
+
 ## Testing
 
 Tests run against a real Postgres with the Stellar network simulated by fake
