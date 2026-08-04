@@ -3,6 +3,12 @@
 [![CI](https://github.com/stellarcosigner/coordinator-api/actions/workflows/ci.yml/badge.svg)](https://github.com/stellarcosigner/coordinator-api/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
+## Maintainers
+
+| Name | GitHub |
+|---|---|
+| Hollujay | [@Hollujay](https://github.com/Hollujay) |
+
 A self-hosted backend for coordinating **Stellar multisig transactions**.
 
 Stellar supports multisig natively at the protocol level — an account can require
