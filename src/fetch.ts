@@ -48,6 +48,7 @@ export async function handleFetch(
     createdAt: row.createdAt,
     expiresAt: row.expiresAt,
     submittedAt: row.submittedAt,
+    submissionHash: row.submissionHash,
     summary: describeTransaction(transaction),
   };
 
