@@ -345,19 +345,25 @@ function describeSetOptions(
   details: Record<string, string | number | boolean | null>,
 ): OperationSummary {
   const parts: string[] = [];
-  if (op.masterWeight !== undefined) {
+  // These six fields are Optional<uint32> in the XDR; the SDK represents an
+  // absent value as `null` (not `undefined`), so `!= null` is required here
+  // to correctly omit them — `!== undefined` alone would let `null` through
+  // and print the literal word "null" for a field the operation never
+  // touched. An explicit 0 (e.g. disabling the master key) must still render,
+  // and `0 != null` is true, so it does.
+  if (op.masterWeight != null) {
     details.masterWeight = op.masterWeight;
     parts.push(`master key weight ${op.masterWeight}`);
   }
-  if (op.lowThreshold !== undefined) {
+  if (op.lowThreshold != null) {
     details.lowThreshold = op.lowThreshold;
     parts.push(`low threshold ${op.lowThreshold}`);
   }
-  if (op.medThreshold !== undefined) {
+  if (op.medThreshold != null) {
     details.medThreshold = op.medThreshold;
     parts.push(`medium threshold ${op.medThreshold}`);
   }
-  if (op.highThreshold !== undefined) {
+  if (op.highThreshold != null) {
     details.highThreshold = op.highThreshold;
     parts.push(`high threshold ${op.highThreshold}`);
   }
@@ -369,11 +375,11 @@ function describeSetOptions(
     details.homeDomain = op.homeDomain;
     parts.push(`home domain "${op.homeDomain}"`);
   }
-  if (op.setFlags !== undefined) {
+  if (op.setFlags != null) {
     details.setFlags = op.setFlags;
     parts.push(`set flags ${op.setFlags}`);
   }
-  if (op.clearFlags !== undefined) {
+  if (op.clearFlags != null) {
     details.clearFlags = op.clearFlags;
     parts.push(`clear flags ${op.clearFlags}`);
   }
