@@ -1,0 +1,112 @@
+[
+  {
+    "name": "payment-native",
+    "why": "The most common operation; the exact sentence must state the amount, asset, and destination.",
+    "operation": {
+      "type": "payment",
+      "params": { "destination": "{DEST}", "asset": "native", "amount": "10.5" }
+    },
+    "expectDescription": "Pay 10.5000000 XLM to {DEST}"
+  },
+  {
+    "name": "create-account",
+    "why": "Exercises the starting-balance branch, distinct from payment.",
+    "operation": {
+      "type": "createAccount",
+      "params": { "destination": "{NEW_ACCOUNT}", "startingBalance": "25" }
+    },
+    "expectDescription": "Create account {NEW_ACCOUNT} with starting balance 25.0000000 XLM"
+  },
+  {
+    "name": "manage-data-set",
+    "why": "Exercises dataValueLabel's printable-text branch (quoted value).",
+    "operation": {
+      "type": "manageData",
+      "params": { "name": "project", "value": "stellar" }
+    },
+    "expectDescription": "Set data entry project = \"stellar\""
+  },
+  {
+    "name": "set-options-signer-and-threshold",
+    "why": "Exercises describeSetOptions' multi-field branch (signer + threshold together), safety-relevant because it changes the account's own multisig setup.",
+    "operation": {
+      "type": "setOptions",
+      "params": { "signer": { "publicKey": "{SIGNER}", "weight": 1 }, "medThreshold": 2 }
+    },
+    "expectDescription": "Set account options: master key weight null; low threshold null; medium threshold 2; high threshold null; set flags null; clear flags null; signer {SIGNER} (weight 1)"
+  },
+  {
+    "name": "change-trust",
+    "why": "Exercises assetLabel's non-native code:issuer branch via a trustline limit change.",
+    "operation": {
+      "type": "changeTrust",
+      "params": { "asset": { "code": "USD", "issuer": "{ISSUER}" }, "limit": "1000" }
+    },
+    "expectDescription": "Set trustline for USD:{ISSUER} with limit 1000.0000000"
+  },
+  {
+    "name": "allow-trust",
+    "why": "Exercises the authorize-flag formatting branch (parsed as a number, not a boolean).",
+    "operation": {
+      "type": "allowTrust",
+      "params": { "trustor": "{TRUSTOR}", "assetCode": "USD", "authorize": true }
+    },
+    "expectDescription": "Set trust authorization for USD held by {TRUSTOR} (authorize=1)"
+  },
+  {
+    "name": "account-merge",
+    "why": "A single-field operation with real safety weight: merging an account is irreversible.",
+    "operation": {
+      "type": "accountMerge",
+      "params": { "destination": "{DEST}" }
+    },
+    "expectDescription": "Merge this account into {DEST}"
+  },
+  {
+    "name": "path-payment-strict-send",
+    "why": "Exercises the dual-asset, dual-amount path-payment branch, distinct from a simple payment.",
+    "operation": {
+      "type": "pathPaymentStrictSend",
+      "params": {
+        "destination": "{DEST}",
+        "sendAsset": "native",
+        "sendAmount": "10",
+        "destAsset": { "code": "USD", "issuer": "{ISSUER}" },
+        "destMin": "5"
+      }
+    },
+    "expectDescription": "Send exactly 10.0000000 XLM to {DEST} delivering at least 5.0000000 USD:{ISSUER}"
+  },
+  {
+    "name": "bump-sequence",
+    "why": "A minimal single-field operation, useful as a baseline for the exhaustiveness switch.",
+    "operation": {
+      "type": "bumpSequence",
+      "params": { "bumpTo": "123456789" }
+    },
+    "expectDescription": "Bump sequence number to 123456789"
+  },
+  {
+    "name": "manage-sell-offer",
+    "why": "Exercises the offer/price formatting branch shared by the DEX operation family.",
+    "operation": {
+      "type": "manageSellOffer",
+      "params": {
+        "selling": "native",
+        "buying": { "code": "USD", "issuer": "{ISSUER}" },
+        "amount": "100",
+        "price": "1.5"
+      }
+    },
+    "expectDescription": "Place sell offer: sell 100.0000000 XLM for USD:{ISSUER} at price 1.5 (offer 0)"
+  },
+  {
+    "name": "invoke-host-function-fallback",
+    "why": "Safety case: Soroban operations are not decoded into plain language in v1, and the fallback sentence must never silently disappear or claim more than it knows.",
+    "operation": {
+      "type": "invokeHostFunction",
+      "params": { "kind": "createStellarAssetContract", "asset": { "code": "USD", "issuer": "{ISSUER}" } }
+    },
+    "expectDescription": "Invoke a Soroban smart contract function"
+  }
+]
