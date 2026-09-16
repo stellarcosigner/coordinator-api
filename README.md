@@ -7,19 +7,17 @@
 [![CI](https://github.com/stellarcosigner/coordinator-api/actions/workflows/ci.yml/badge.svg)](https://github.com/stellarcosigner/coordinator-api/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-## Maintainers
+A self-hosted backend for coordinating **Stellar multisig transactions**: it
+stores a pending transaction, tracks signatures from signers' own wallets, and
+submits automatically once the account's real on-chain threshold is met.
 
-| Name | GitHub |
-|---|---|
-| Hollujay | [@Hollujay](https://github.com/Hollujay) |
+## What is this?
 
-A self-hosted backend for coordinating **Stellar multisig transactions**.
-
-Stellar supports multisig natively at the protocol level — an account can require
-signatures from multiple weighted keys, above a threshold, before a transaction
-is valid. What's missing is *coordination*: getting a transaction built by one
-person in front of the other required signers, tracking who has signed, and
-submitting automatically once the threshold is met.
+Stellar supports multisig natively at the protocol level — an account can
+require signatures from multiple weighted keys, above a threshold, before a
+transaction is valid. What's missing is *coordination*: getting a transaction
+built by one person in front of the other required signers, tracking who has
+signed, and submitting automatically once the threshold is met.
 
 This service does exactly that, and nothing more:
 
@@ -30,68 +28,47 @@ This service does exactly that, and nothing more:
 It does **not** hold private keys, does **not** sign on anyone's behalf, and has
 **no** endpoint that lists pending requests.
 
----
+## Why it exists
 
-## Non-negotiable security and privacy properties
+Multisig coordination is usually solved with ad hoc sharing of XDR blobs over
+chat, with no shared view of who has signed or whether the threshold has been
+met. This service gives multisig signers a single, unguessable link per
+transaction, a live view of signer/threshold state pulled straight from the
+network, and automatic submission — without ever taking custody of a key.
 
-1. **Pending transactions are never publicly listable.** There is no "browse all
-   pending requests" endpoint, ever. A pending transaction is only accessible
-   via its exact, unguessable ID (32 hex chars / 128 bits of CSPRNG entropy, see
-   [`src/id.ts`](src/id.ts)).
-2. **IDs are never sequential or predictable** — never derived from the account
-   address, a timestamp, or anything else guessable.
-3. **No private key ever touches this service.** Every signature is produced
-   client-side by a signer's own wallet. This API only ever receives a detached
-   signature to attach to a stored transaction.
-4. **Signer lists and thresholds are resolved LIVE from the network on every
-   request** ([`src/verify.ts`](src/verify.ts), via
-   [`HorizonAccountGateway`](src/horizon.ts)) — never from client input, never
-   from a stale cache. A client claiming "I am a signer" is rejected unless the
-   network agrees *right now*.
-5. **Signatures are additive-only.** A signer may sign once; an existing
-   signature can never be overwritten (enforced by a database primary key).
+## How it works
 
-See [SECURITY.md](SECURITY.md) for the full threat model.
+1. A proposer submits a built transaction envelope (XDR) for an account they
+   don't need to control alone.
+2. The service resolves that account's **current on-chain signer list and
+   threshold live from Horizon** and stores the transaction under an
+   unguessable ID.
+3. Each signer opens the request, reviews a fully decoded summary, and signs
+   with their own wallet. The detached signature is posted back to the API.
+4. Once the live-resolved threshold is met, the service assembles and submits
+   the fully-signed transaction to the network.
 
-## What this service does NOT do
+## Request lifecycle
 
-- ❌ List pending requests, even for admin/debug purposes. (Operations
-  visibility is provided by structured logs, not a queryable API.)
-- ❌ Store or transmit a private key at any point.
-- ❌ Trust a client-supplied signer list, threshold, or account state.
-- ❌ Use a sequential or predictable ID scheme — even in development.
+| Stage | When | Notes |
+| --- | --- | --- |
+| `pending` | Created; awaiting signatures | Default TTL **7 days** (`DEFAULT_TTL_SECONDS`), max 30 days |
+| `submitted` | Threshold met, envelope submitted | Never expires |
+| `expired` | TTL passed while still pending | Soft-expired, retained **30 days** (`EXPIRED_RETENTION_SECONDS`), then hard-deleted; API returns the same 404 as "never existed" |
 
-## Tech stack
-
-- **Node.js 22 LTS**, **TypeScript** (strict, no `any`)
-- **Fastify** (with built-in JSON Schema validation and structured `pino` logging)
-- **Postgres** for storage
-- **@stellar/stellar-sdk** for XDR parsing, signature verification, and reading
-  account state / submitting via Horizon
-
-## Repo layout
-
-```
-src/
-  index.ts       API server entry point (starts HTTP + background jobs)
-  app.ts         Fastify app factory (migrations at boot, route registration)
-  routes.ts      HTTP route registration + JSON Schema validation
-  create.ts      POST /requests
-  fetch.ts       GET /requests/:id  (with decoded transaction summary)
-  sign.ts        POST /requests/:id/sign
-  verify.ts      live signer list/threshold resolution + signature verification
-  submit.ts      submission envelope assembly + background submission retry
-  expire.ts      background expiry maintenance
-  store.ts       Postgres pool, migrations, and queries
-  id.ts          unguessable ID generation
-  summary.ts     human-readable transaction decoding
-  transaction.ts envelope parsing / hashing helpers
-  horizon.ts     Horizon adapters (account state, submission)
-  config.ts      environment configuration
-  background.ts  background job scheduler
-migrations/      SQL migrations (applied at boot, tracked in schema_migrations)
-test/            integration tests against a real Postgres + fake network gateways
-```
+- The background job runs every **15 minutes** (`EXPIRE_JOB_INTERVAL_MS`),
+  marks expired requests, hard-deletes expired rows past the retention window,
+  and **retries network submission** for pending requests whose signatures meet
+  the threshold (up to `MAX_SUBMIT_ATTEMPTS`, default 5). This recovers from
+  transient Horizon failures.
+- Threshold used is the account's **medium threshold** — the default for
+  Stellar operations. (Operations that explicitly set a higher threshold are
+  not auto-detected in v1.)
+- **Sequence numbers:** the transaction is submitted with the sequence number it
+  was built with. If the account has moved on-chain since then, submission
+  fails with `tx_bad_seq` (logged; the request reverts to `pending` and retries
+  are bounded). Rebuilding the transaction with a fresh sequence is the fix —
+  a known limitation of coordination services.
 
 ## API
 
@@ -219,27 +196,89 @@ Any wallet that exposes raw signing over the transaction hash can post directly.
 
 Checks the database connection. `{ "status": "ok" }`.
 
-## Request lifecycle
+## Security model
 
-| Stage | When | Notes |
-| --- | --- | --- |
-| `pending` | Created; awaiting signatures | Default TTL **7 days** (`DEFAULT_TTL_SECONDS`), max 30 days |
-| `submitted` | Threshold met, envelope submitted | Never expires |
-| `expired` | TTL passed while still pending | Soft-expired, retained **30 days** (`EXPIRED_RETENTION_SECONDS`), then hard-deleted; API returns the same 404 as "never existed" |
+1. **Pending transactions are never publicly listable.** There is no "browse all
+   pending requests" endpoint, ever. A pending transaction is only accessible
+   via its exact, unguessable ID (32 hex chars / 128 bits of CSPRNG entropy, see
+   [`src/id.ts`](src/id.ts)).
+2. **IDs are never sequential or predictable** — never derived from the account
+   address, a timestamp, or anything else guessable.
+3. **No private key ever touches this service.** Every signature is produced
+   client-side by a signer's own wallet. This API only ever receives a detached
+   signature to attach to a stored transaction.
+4. **Signer lists and thresholds are resolved LIVE from the network on every
+   request** ([`src/verify.ts`](src/verify.ts), via
+   [`HorizonAccountGateway`](src/horizon.ts)) — never from client input, never
+   from a stale cache. A client claiming "I am a signer" is rejected unless the
+   network agrees *right now*.
+5. **Signatures are additive-only.** A signer may sign once; an existing
+   signature can never be overwritten (enforced by a database primary key).
 
-- The background job runs every **15 minutes** (`EXPIRE_JOB_INTERVAL_MS`),
-  marks expired requests, hard-deletes expired rows past the retention window,
-  and **retries network submission** for pending requests whose signatures meet
-  the threshold (up to `MAX_SUBMIT_ATTEMPTS`, default 5). This recovers from
-  transient Horizon failures.
-- Threshold used is the account's **medium threshold** — the default for
-  Stellar operations. (Operations that explicitly set a higher threshold are
-  not auto-detected in v1.)
-- **Sequence numbers:** the transaction is submitted with the sequence number it
-  was built with. If the account has moved on-chain since then, submission
-  fails with `tx_bad_seq` (logged; the request reverts to `pending` and retries
-  are bounded). Rebuilding the transaction with a fresh sequence is the fix —
-  a known limitation of coordination services.
+What this service deliberately does **not** do:
+
+- ❌ List pending requests, even for admin/debug purposes. (Operations
+  visibility is provided by structured logs, not a queryable API.)
+- ❌ Store or transmit a private key at any point.
+- ❌ Trust a client-supplied signer list, threshold, or account state.
+- ❌ Use a sequential or predictable ID scheme — even in development.
+
+[SECURITY.md](SECURITY.md) is the authoritative source for the full threat
+model and reporting a vulnerability.
+
+## Architecture
+
+```text
+  Proposer client            Signer client
+  (e.g. coordinator-web)     (e.g. coordinator-web)
+         │                          │
+         │        HTTP / JSON       │
+         └────────────┬─────────────┘
+                       ▼
+               coordinator-api
+                  │        │
+                  ▼        ▼
+            PostgreSQL   Stellar Network
+           (pending      (Horizon: live
+            requests,     signer/threshold
+            signatures)   state + submission)
+```
+
+Both the proposer and every signer talk only to `coordinator-api` over HTTP —
+neither has direct access to Postgres or to Horizon. The API is the only
+component that resolves live signer/threshold state and submits transactions.
+
+**Tech stack:**
+
+- **Node.js 22 LTS**, **TypeScript** (strict, no `any`)
+- **Fastify** (with built-in JSON Schema validation and structured `pino` logging)
+- **Postgres** for storage
+- **@stellar/stellar-sdk** for XDR parsing, signature verification, and reading
+  account state / submitting via Horizon
+
+**Repo layout:**
+
+```
+src/
+  index.ts       API server entry point (starts HTTP + background jobs)
+  app.ts         Fastify app factory (migrations at boot, route registration)
+  routes.ts      HTTP route registration + JSON Schema validation
+  create.ts      POST /requests
+  fetch.ts       GET /requests/:id  (with decoded transaction summary)
+  sign.ts        POST /requests/:id/sign
+  verify.ts      live signer list/threshold resolution + signature verification
+  submit.ts      submission envelope assembly + background submission retry
+  expire.ts      background expiry maintenance
+  store.ts       Postgres pool, migrations, and queries
+  id.ts          unguessable ID generation
+  summary.ts     human-readable transaction decoding
+  transaction.ts envelope parsing / hashing helpers
+  horizon.ts     Horizon adapters (account state, submission)
+  config.ts      environment configuration
+  background.ts  background job scheduler
+migrations/      SQL migrations (applied at boot, tracked in schema_migrations)
+test/            integration tests against a real Postgres + fake network gateways
+```
 
 ## Configuration
 
@@ -276,6 +315,24 @@ There is **no `dotenv` package** in this project. Copy
 `start`, and `db:migrate` scripts already pass `--env-file=.env`, so **do not**
 add a `dotenv.config()` call or the dotenv dependency. It would be redundant.
 
+## Testing
+
+Tests run against a real Postgres with the Stellar network simulated by fake
+gateways (no network access needed). Start Postgres, then:
+
+```bash
+docker run -d --name coordinator-test-pg \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
+  -p 5433:5432 postgres:16-alpine
+
+npm test          # vitest (typecheck + lint are also run in CI)
+npm run typecheck
+npm run lint
+```
+
+Each test file gets an isolated throwaway database. In CI the Postgres service
+container is configured automatically (`.github/workflows/ci.yml`).
+
 ## Deployment
 
 This API is deployed on Render's free web service tier. Free instances spin
@@ -306,29 +363,44 @@ The Render Start Command must be `node dist/index.js`, not `npm run start`.
 The `start` script assumes a local `.env` file, which does not exist on Render.
 On Render, configuration is injected directly via the dashboard instead.
 
-## Testing
+## Limitations
 
-Tests run against a real Postgres with the Stellar network simulated by fake
-gateways (no network access needed). Start Postgres, then:
+- The account's **medium threshold** is used; operations that explicitly set a
+  higher threshold are not auto-detected in v1.
+- Submission uses the sequence number the transaction was built with; if the
+  account has moved on-chain since, submission fails with `tx_bad_seq` and
+  requires rebuilding with a fresh sequence.
+- The free-tier deployment described above is not suitable for
+  latency-sensitive or production use.
 
-```bash
-docker run -d --name coordinator-test-pg \
-  -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
-  -p 5433:5432 postgres:16-alpine
+## Contributing
 
-npm test          # vitest (typecheck + lint are also run in CI)
-npm run typecheck
-npm run lint
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the git workflow, coding standards,
+and review checklist.
 
-Each test file gets an isolated throwaway database. In CI the Postgres service
-container is configured automatically (`.github/workflows/ci.yml`).
+## Community
+
+There is no dedicated community channel for this project yet. Use
+[GitHub Issues](https://github.com/stellarcosigner/coordinator-api/issues) for
+bug reports, questions, and feature discussion.
+
+## Maintainers
+
+| Name | GitHub |
+|---|---|
+| Hollujay | [@Hollujay](https://github.com/Hollujay) |
+| ZeePearl56 | [@ZeePearl56](https://github.com/ZeePearl56) |
 
 ## Contributors
 
 <a href="https://github.com/stellarcosigner/coordinator-api/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=stellarcosigner/coordinator-api" />
 </a>
+
+## Related projects
+
+- [coordinator-web](https://github.com/stellarcosigner/coordinator-web) — the
+  web frontend for this API.
 
 ## License
 
