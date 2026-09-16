@@ -120,6 +120,7 @@ Returns everything a signer needs to review before signing:
   "createdAt": "2026-08-03T...Z",
   "expiresAt": "2026-08-10T...Z",
   "submittedAt": null,
+  "submissionHash": null,         // the actual on-chain hash once submitted; null until then
   "summary": {                    // fully decoded — never "some operations"
     "source": "G...",
     "fee": "100",

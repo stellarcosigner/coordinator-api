@@ -25,6 +25,8 @@ export interface PendingRequestRow {
   createdAt: string;
   expiresAt: string;
   submittedAt: string | null;
+  /** The actual on-chain hash returned by Horizon on successful submission; null until then. */
+  submissionHash: string | null;
 }
 
 export interface CreateRequestInput {
@@ -83,6 +85,7 @@ interface RequestRowShape {
   created_at: Date;
   expires_at: Date;
   submitted_at: Date | null;
+  submission_hash: string | null;
 }
 
 interface SignatureRowShape {
@@ -106,6 +109,7 @@ function mapRequest(row: RequestRowShape): PendingRequestRow {
     createdAt: row.created_at.toISOString(),
     expiresAt: row.expires_at.toISOString(),
     submittedAt: row.submitted_at?.toISOString() ?? null,
+    submissionHash: row.submission_hash,
   };
 }
 
@@ -310,6 +314,15 @@ export class Store {
       [id],
     );
     return (result.rowCount ?? 0) > 0;
+  }
+
+  /**
+   * Records the actual on-chain hash returned by Horizon after a successful
+   * submission. Must only be called once the network has confirmed the
+   * submission succeeded; never call this speculatively.
+   */
+  async recordSubmissionSuccess(id: string, submissionHash: string): Promise<void> {
+    await this.pool.query(`UPDATE pending_requests SET submission_hash = $2 WHERE id = $1`, [id, submissionHash]);
   }
 
   async recordSubmitFailure(id: string, errorMessage: string, attempts: number): Promise<void> {

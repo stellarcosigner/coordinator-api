@@ -37,14 +37,21 @@ export interface SubmissionAttemptResult {
   hash: string;
 }
 
-/** Assembles the fully-signed envelope and submits it to the network. */
+/**
+ * Assembles the fully-signed envelope, submits it to the network, and
+ * persists the actual Horizon-returned hash once submission succeeds. This is
+ * the only place a submission hash is ever recorded — never before Horizon
+ * confirms success, and never derived locally from the envelope.
+ */
 export async function submitSignedRequest(
   deps: AppDeps,
   row: PendingRequestRow,
   signatures: readonly StoredSignature[],
 ): Promise<SubmissionAttemptResult> {
   const envelope = assembleSignedEnvelope(row.transactionXdr, row.network, signatures);
-  return deps.submissionGateway.submitTransaction(envelope, row.network);
+  const result = await deps.submissionGateway.submitTransaction(envelope, row.network);
+  await deps.store.recordSubmissionSuccess(row.id, result.hash);
+  return result;
 }
 
 /**
