@@ -98,7 +98,7 @@ describe('expiry behavior', () => {
 
     // Nothing expired yet: the request's TTL is 60s in the future.
     const early = await runExpiryMaintenance(
-      { config: ctx.config, store: ctx.store, accountGateway: ctx.accountGateway, submissionGateway: ctx.submissionGateway },
+      { config: ctx.config, store: ctx.store, accountGateway: ctx.accountGateway, submissionGateway: ctx.submissionGateway, transactionLookupGateway: ctx.transactionLookupGateway },
       noopLogger,
     );
     expect(early.expired).toBe(0);
@@ -115,7 +115,7 @@ describe('expiry behavior', () => {
     await pool.end();
 
     const result = await runExpiryMaintenance(
-      { config: ctx.config, store: ctx.store, accountGateway: ctx.accountGateway, submissionGateway: ctx.submissionGateway },
+      { config: ctx.config, store: ctx.store, accountGateway: ctx.accountGateway, submissionGateway: ctx.submissionGateway, transactionLookupGateway: ctx.transactionLookupGateway },
       noopLogger,
     );
     expect(result.expired).toBe(1);

@@ -20,6 +20,8 @@ export interface Config {
   expiredRetentionSeconds: number;
   /** Max network submission attempts per request before giving up. Default: 5. */
   maxSubmitAttempts: number;
+  /** Max 'submitted' rows missing a submission_hash examined per reconciliation pass. Default: 100. */
+  reconciliationBatchSize: number;
   /** Allowed CORS origins (empty = CORS disabled). */
   corsOrigin: string[];
 }
@@ -36,6 +38,7 @@ const DEFAULTS = {
   expireJobIntervalMs: 15 * 60 * 1000,
   expiredRetentionSeconds: 30 * 24 * 60 * 60,
   maxSubmitAttempts: 5,
+  reconciliationBatchSize: 100,
 };
 
 function parsePositiveInt(raw: string | undefined, fallback: number, name: string): number {
@@ -69,6 +72,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       'EXPIRED_RETENTION_SECONDS',
     ),
     maxSubmitAttempts: parsePositiveInt(env.MAX_SUBMIT_ATTEMPTS, DEFAULTS.maxSubmitAttempts, 'MAX_SUBMIT_ATTEMPTS'),
+    reconciliationBatchSize: parsePositiveInt(
+      env.RECONCILIATION_BATCH_SIZE,
+      DEFAULTS.reconciliationBatchSize,
+      'RECONCILIATION_BATCH_SIZE',
+    ),
     corsOrigin,
   };
 }

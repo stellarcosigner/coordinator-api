@@ -4,7 +4,7 @@
  * fully-signed transaction (submit). Both are funnelled through Horizon here so
  * the rest of the service can treat the network as an injectable gateway.
  */
-import { Horizon } from '@stellar/stellar-sdk';
+import { Horizon, NotFoundError } from '@stellar/stellar-sdk';
 import type { Config } from './config.js';
 import type {
   AccountGateway,
@@ -12,6 +12,8 @@ import type {
   NetworkName,
   SubmissionGateway,
   SubmissionResult,
+  TransactionLookupGateway,
+  TransactionLookupResult,
 } from './types.js';
 import { parseTransaction } from './transaction.js';
 
@@ -51,5 +53,26 @@ export class HorizonSubmissionGateway implements SubmissionGateway {
     const transaction = parseTransaction(signedEnvelopeXdr, network);
     const response = await this.serverFactory(network).submitTransaction(transaction);
     return { hash: response.hash };
+  }
+}
+
+/**
+ * Looks up a transaction by hash, used to reconcile requests left in
+ * 'submitted' state without a confirmed submission_hash. A 404 from Horizon is
+ * surfaced as `null` (not evidence of non-submission — see TransactionLookupGateway);
+ * every other failure (network error, non-404 status) propagates so the caller
+ * treats it as a temporary, retry-later condition.
+ */
+export class HorizonTransactionLookupGateway implements TransactionLookupGateway {
+  constructor(private readonly serverFactory: HorizonServerFactory) {}
+
+  async findTransactionByHash(hash: string, network: NetworkName): Promise<TransactionLookupResult | null> {
+    try {
+      const record = await this.serverFactory(network).transactions().transaction(hash).call();
+      return { hash: record.hash, successful: record.successful };
+    } catch (error) {
+      if (error instanceof NotFoundError) return null;
+      throw error;
+    }
   }
 }

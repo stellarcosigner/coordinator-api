@@ -3,10 +3,12 @@
  * (config.expireJobIntervalMs, default 15 minutes). Responsibilities:
  *  - retry network submission for requests whose threshold is met (submit.ts)
  *  - mark expired requests and hard-delete old ones (expire.ts)
+ *  - reconcile 'submitted' requests still missing a submission_hash (reconcile.ts)
  */
 import type { AppDeps } from './app.js';
 import { retrySubmittableRequests } from './submit.js';
 import { runExpiryMaintenance } from './expire.js';
+import { reconcileSubmittedRequests } from './reconcile.js';
 import type { Logger } from './types.js';
 
 export function startBackgroundJobs(deps: AppDeps, log: Logger): () => void {
@@ -14,7 +16,8 @@ export function startBackgroundJobs(deps: AppDeps, log: Logger): () => void {
     try {
       const { expired, deleted } = await runExpiryMaintenance(deps, log);
       const submitted = await retrySubmittableRequests(deps, log);
-      log.info({ expired, deleted, submitted }, 'background job pass complete');
+      const { scanned, confirmed } = await reconcileSubmittedRequests(deps, log);
+      log.info({ expired, deleted, submitted, reconciliationScanned: scanned, reconciliationConfirmed: confirmed }, 'background job pass complete');
     } catch (error) {
       // A failing pass must never kill the interval.
       log.error({ err: error }, 'background job failed');

@@ -58,9 +58,16 @@ network, and automatic submission — without ever taking custody of a key.
 
 - The background job runs every **15 minutes** (`EXPIRE_JOB_INTERVAL_MS`),
   marks expired requests, hard-deletes expired rows past the retention window,
-  and **retries network submission** for pending requests whose signatures meet
-  the threshold (up to `MAX_SUBMIT_ATTEMPTS`, default 5). This recovers from
-  transient Horizon failures.
+  **retries network submission** for pending requests whose signatures meet
+  the threshold (up to `MAX_SUBMIT_ATTEMPTS`, default 5), and **reconciles**
+  `submitted` requests still missing a `submissionHash` (up to
+  `RECONCILIATION_BATCH_SIZE` per pass, default 100). Submission retry recovers
+  from transient Horizon failures that occur *before* network submission is
+  attempted; reconciliation recovers the far rarer case where the process died
+  *after* the network genuinely accepted the transaction but before that
+  outcome was recorded — it looks the transaction up by hash and persists the
+  network-confirmed hash, never guessing. An uncertain lookup (not found yet,
+  or a transient failure) leaves the row unchanged for a later pass.
 - Threshold used is the account's **medium threshold** — the default for
   Stellar operations. (Operations that explicitly set a higher threshold are
   not auto-detected in v1.)
@@ -270,11 +277,12 @@ src/
   verify.ts      live signer list/threshold resolution + signature verification
   submit.ts      submission envelope assembly + background submission retry
   expire.ts      background expiry maintenance
+  reconcile.ts   background reconciliation of ambiguous 'submitted' requests
   store.ts       Postgres pool, migrations, and queries
   id.ts          unguessable ID generation
   summary.ts     human-readable transaction decoding
   transaction.ts envelope parsing / hashing helpers
-  horizon.ts     Horizon adapters (account state, submission)
+  horizon.ts     Horizon adapters (account state, submission, transaction lookup)
   config.ts      environment configuration
   background.ts  background job scheduler
 migrations/      SQL migrations (applied at boot, tracked in schema_migrations)
@@ -296,6 +304,7 @@ All configuration is environment-driven; see [`.env.example`](.env.example).
 | `EXPIRE_JOB_INTERVAL_MS` | `900000` (15 min) | background job interval |
 | `EXPIRED_RETENTION_SECONDS` | `2592000` (30 days) | retention before hard delete |
 | `MAX_SUBMIT_ATTEMPTS` | `5` | submission retry cap |
+| `RECONCILIATION_BATCH_SIZE` | `100` | max `submitted`-without-hash rows examined per reconciliation pass |
 | `CORS_ORIGIN` | *(empty = off)* | comma-separated origins for browser frontends |
 | `LOG_LEVEL` | `info` | pino log level |
 

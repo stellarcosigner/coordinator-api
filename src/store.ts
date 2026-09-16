@@ -325,6 +325,39 @@ export class Store {
     await this.pool.query(`UPDATE pending_requests SET submission_hash = $2 WHERE id = $1`, [id, submissionHash]);
   }
 
+  /**
+   * Bounded batch of 'submitted' rows still missing a submission_hash — the
+   * ambiguous-outcome case a process crash between network submission and
+   * recording success can leave behind. Ordered oldest-submitted-first so a
+   * persistently failing lookup for one row cannot starve the rest of the batch.
+   */
+  async getSubmittedRequestsMissingSubmissionHash(limit: number): Promise<PendingRequestRow[]> {
+    const result = await this.pool.query<RequestRowShape>(
+      `SELECT * FROM pending_requests
+       WHERE status = 'submitted' AND submission_hash IS NULL
+       ORDER BY submitted_at
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows.map(mapRequest);
+  }
+
+  /**
+   * Persists a submission hash discovered by reconciliation. Guarded by
+   * `submission_hash IS NULL` so a concurrent reconciliation pass (this
+   * instance or another) cannot race: whichever UPDATE commits first wins,
+   * and every later one becomes a no-op instead of overwriting it. Returns
+   * whether this call was the one that applied the write.
+   */
+  async recordReconciledSubmissionHash(id: string, submissionHash: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE pending_requests SET submission_hash = $2
+       WHERE id = $1 AND status = 'submitted' AND submission_hash IS NULL`,
+      [id, submissionHash],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async recordSubmitFailure(id: string, errorMessage: string, attempts: number): Promise<void> {
     await this.pool.query(
       `UPDATE pending_requests

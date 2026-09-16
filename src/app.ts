@@ -7,13 +7,14 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { registerRoutes } from './routes.js';
 import type { Store } from './store.js';
-import type { AccountGateway, SubmissionGateway } from './types.js';
+import type { AccountGateway, SubmissionGateway, TransactionLookupGateway } from './types.js';
 
 export interface AppDeps {
   config: Config;
   store: Store;
   accountGateway: AccountGateway;
   submissionGateway: SubmissionGateway;
+  transactionLookupGateway: TransactionLookupGateway;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
