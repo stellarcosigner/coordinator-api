@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { retrySubmittableRequests } from '../src/submit.js';
 import { parseTransaction } from '../src/transaction.js';
@@ -144,5 +145,71 @@ describe('threshold-met auto-submission', () => {
     );
     expect(submitted).toBe(0);
     expect(ctx.submissionGateway.submissions).toHaveLength(0);
+  });
+});
+
+describe('submission hash persistence', () => {
+  it('persists the exact hash Horizon returned, distinct from the unsigned-envelope tx_hash, and exposes it via fetch', async () => {
+    const { requestId, signers, tx } = await setupWithRequest([1], 1);
+
+    const beforeRow = await ctx.store.getRequest(requestId);
+    expect(beforeRow!.submissionHash).toBeNull();
+
+    await sign(requestId, signers[0]!, tx);
+
+    expect(ctx.submissionGateway.submissions).toHaveLength(1);
+    const expectedHash = createHash('sha256')
+      .update(ctx.submissionGateway.submissions[0]!.xdr)
+      .digest('hex');
+    const row = await ctx.store.getRequest(requestId);
+    expect(row!.status).toBe('submitted');
+    expect(row!.submissionHash).toBe(expectedHash);
+    // The stored submission hash must never equal the unsigned-envelope tx_hash
+    // (a different value, computed before any signature existed).
+    expect(row!.submissionHash).not.toBe(row!.txHash);
+
+    const fetched = await getJson(ctx.app, `/requests/${requestId}`);
+    expect(fetched.body.submissionHash).toBe(expectedHash);
+  });
+
+  it('does not persist a submission hash when submission fails', async () => {
+    const { requestId, signers, tx } = await setupWithRequest([1], 1);
+    ctx.submissionGateway.failWith(new Error('horizon is down'));
+
+    const status = await sign(requestId, signers[0]!, tx);
+    expect(status).toBe(200);
+
+    const row = await ctx.store.getRequest(requestId);
+    expect(row!.status).toBe('pending');
+    expect(row!.submissionHash).toBeNull();
+
+    const fetched = await getJson(ctx.app, `/requests/${requestId}`);
+    expect(fetched.body.submissionHash).toBeNull();
+  });
+
+  it('persists the submission hash on a background-job retry success, not just the first-attempt path', async () => {
+    const { requestId, signers, tx } = await setupWithRequest([1, 1], 2);
+
+    await sign(requestId, signers[0]!, tx);
+    ctx.submissionGateway.failWith(new Error('horizon is down'));
+    await sign(requestId, signers[1]!, tx);
+
+    const afterFailure = await ctx.store.getRequest(requestId);
+    expect(afterFailure!.submissionHash).toBeNull();
+
+    await retrySubmittableRequests(
+      {
+        config: ctx.config,
+        store: ctx.store,
+        accountGateway: ctx.accountGateway,
+        submissionGateway: ctx.submissionGateway,
+      },
+      noopLogger,
+    );
+
+    const afterRetry = await ctx.store.getRequest(requestId);
+    expect(afterRetry!.status).toBe('submitted');
+    expect(afterRetry!.submissionHash).not.toBeNull();
+    expect(afterRetry!.submissionHash).not.toBe(afterRetry!.txHash);
   });
 });
