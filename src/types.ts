@@ -37,6 +37,25 @@ export interface SubmissionGateway {
   submitTransaction(signedEnvelopeXdr: string, network: NetworkName): Promise<SubmissionResult>;
 }
 
+/** A transaction record the network has authoritatively confirmed by hash. */
+export interface TransactionLookupResult {
+  /** The hash as reported by the network for the found record (not derived locally). */
+  hash: string;
+  /** Whether the transaction was applied successfully, per the network's own record. */
+  successful: boolean;
+}
+
+export interface TransactionLookupGateway {
+  /**
+   * Looks up a transaction by its hash. Resolves to the record when the network
+   * has it, resolves to null when the network reports the hash does not exist
+   * (which may just mean propagation/indexing delay — callers must not treat
+   * this as proof the transaction was never submitted), and throws for any
+   * other network/transport failure.
+   */
+  findTransactionByHash(hash: string, network: NetworkName): Promise<TransactionLookupResult | null>;
+}
+
 export interface StoredSignature {
   signerPublicKey: string;
   /** base64-encoded 64-byte ed25519 signature over the transaction's signature-base hash */

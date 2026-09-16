@@ -119,6 +119,7 @@ describe('threshold-met auto-submission', () => {
         store: ctx.store,
         accountGateway: ctx.accountGateway,
         submissionGateway: ctx.submissionGateway,
+        transactionLookupGateway: ctx.transactionLookupGateway,
       },
       noopLogger,
     );
@@ -140,6 +141,7 @@ describe('threshold-met auto-submission', () => {
         store: ctx.store,
         accountGateway: ctx.accountGateway,
         submissionGateway: ctx.submissionGateway,
+        transactionLookupGateway: ctx.transactionLookupGateway,
       },
       noopLogger,
     );
@@ -203,6 +205,7 @@ describe('submission hash persistence', () => {
         store: ctx.store,
         accountGateway: ctx.accountGateway,
         submissionGateway: ctx.submissionGateway,
+        transactionLookupGateway: ctx.transactionLookupGateway,
       },
       noopLogger,
     );

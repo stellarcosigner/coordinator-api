@@ -5,7 +5,12 @@
 import { buildApp, type AppDeps } from './app.js';
 import { startBackgroundJobs } from './background.js';
 import { loadConfig } from './config.js';
-import { createHorizonServerFactory, HorizonAccountGateway, HorizonSubmissionGateway } from './horizon.js';
+import {
+  createHorizonServerFactory,
+  HorizonAccountGateway,
+  HorizonSubmissionGateway,
+  HorizonTransactionLookupGateway,
+} from './horizon.js';
 import { createPool, Store } from './store.js';
 
 const config = loadConfig();
@@ -13,8 +18,9 @@ const store = new Store(createPool(config.databaseUrl));
 const serverFactory = createHorizonServerFactory(config);
 const accountGateway = new HorizonAccountGateway(serverFactory);
 const submissionGateway = new HorizonSubmissionGateway(serverFactory);
+const transactionLookupGateway = new HorizonTransactionLookupGateway(serverFactory);
 
-const deps: AppDeps = { config, store, accountGateway, submissionGateway };
+const deps: AppDeps = { config, store, accountGateway, submissionGateway, transactionLookupGateway };
 const app = await buildApp(deps);
 
 const stopBackgroundJobs = startBackgroundJobs(deps, app.log);

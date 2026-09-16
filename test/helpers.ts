@@ -14,7 +14,15 @@ import { Pool } from 'pg';
 import { buildApp } from '../src/app.js';
 import { loadConfig, type Config } from '../src/config.js';
 import { createPool, Store } from '../src/store.js';
-import type { AccountGateway, AccountState, NetworkName, SubmissionGateway, SubmissionResult } from '../src/types.js';
+import type {
+  AccountGateway,
+  AccountState,
+  NetworkName,
+  SubmissionGateway,
+  SubmissionResult,
+  TransactionLookupGateway,
+  TransactionLookupResult,
+} from '../src/types.js';
 
 const ADMIN_URL = process.env.TEST_DATABASE_ADMIN_URL ?? 'postgres://postgres:postgres@localhost:5433/postgres';
 
@@ -75,6 +83,37 @@ export class FakeSubmissionGateway implements SubmissionGateway {
   }
 }
 
+export class FakeTransactionLookupGateway implements TransactionLookupGateway {
+  private readonly results = new Map<string, TransactionLookupResult | null>();
+  private failure: Error | null = null;
+  readonly lookups: Array<{ hash: string; network: NetworkName }> = [];
+
+  /** Simulates the network confirming this hash was seen, with the given outcome. */
+  confirm(hash: string, successful = true): void {
+    this.results.set(hash, { hash, successful });
+  }
+
+  /** Simulates a 404 — the hash is not (yet) found. Also the default for any unset hash. */
+  notFound(hash: string): void {
+    this.results.set(hash, null);
+  }
+
+  /** Simulates a transient network/Horizon failure on the next lookup only. */
+  failWith(error: Error): void {
+    this.failure = error;
+  }
+
+  async findTransactionByHash(hash: string, network: NetworkName): Promise<TransactionLookupResult | null> {
+    this.lookups.push({ hash, network });
+    if (this.failure) {
+      const error = this.failure;
+      this.failure = null;
+      throw error;
+    }
+    return this.results.get(hash) ?? null;
+  }
+}
+
 export interface TestContext {
   app: FastifyInstance;
   store: Store;
@@ -82,6 +121,7 @@ export interface TestContext {
   databaseUrl: string;
   accountGateway: FakeAccountGateway;
   submissionGateway: FakeSubmissionGateway;
+  transactionLookupGateway: FakeTransactionLookupGateway;
   cleanup: () => Promise<void>;
 }
 
@@ -116,7 +156,8 @@ export async function setupTestContext(overrides?: Partial<Config>): Promise<Tes
 
   const accountGateway = new FakeAccountGateway();
   const submissionGateway = new FakeSubmissionGateway();
-  const app = await buildApp({ config, store, accountGateway, submissionGateway });
+  const transactionLookupGateway = new FakeTransactionLookupGateway();
+  const app = await buildApp({ config, store, accountGateway, submissionGateway, transactionLookupGateway });
 
   // Fresh state for this test.
   const pool = new Pool({ connectionString: db.url });
@@ -128,7 +169,7 @@ export async function setupTestContext(overrides?: Partial<Config>): Promise<Tes
     await store.close();
   };
 
-  return { app, store, config, databaseUrl: db.url, accountGateway, submissionGateway, cleanup };
+  return { app, store, config, databaseUrl: db.url, accountGateway, submissionGateway, transactionLookupGateway, cleanup };
 }
 
 export async function postJson(
