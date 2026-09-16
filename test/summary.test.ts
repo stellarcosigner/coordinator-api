@@ -88,11 +88,14 @@ function buildOperation(operation: DecoderCase['operation'], tokens: Map<string,
         value: Buffer.from(p.value as string, 'utf8'),
       });
     case 'setOptions': {
-      const signer = p.signer as { publicKey: string; weight: number };
-      return Operation.setOptions({
-        signer: { ed25519PublicKey: resolveString(signer.publicKey, tokens), weight: signer.weight },
-        medThreshold: p.medThreshold as number,
-      });
+      const signer = p.signer as { publicKey: string; weight: number } | undefined;
+      const options: Parameters<typeof Operation.setOptions>[0] = {};
+      if (signer) {
+        options.signer = { ed25519PublicKey: resolveString(signer.publicKey, tokens), weight: signer.weight };
+      }
+      if (p.medThreshold !== undefined) options.medThreshold = p.medThreshold as number;
+      if (p.masterWeight !== undefined) options.masterWeight = p.masterWeight as number;
+      return Operation.setOptions(options);
     }
     case 'changeTrust':
       return Operation.changeTrust({

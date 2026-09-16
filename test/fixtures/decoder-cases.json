@@ -33,7 +33,16 @@
       "type": "setOptions",
       "params": { "signer": { "publicKey": "{SIGNER}", "weight": 1 }, "medThreshold": 2 }
     },
-    "expectDescription": "Set account options: master key weight null; low threshold null; medium threshold 2; high threshold null; set flags null; clear flags null; signer {SIGNER} (weight 1)"
+    "expectDescription": "Set account options: medium threshold 2; signer {SIGNER} (weight 1)"
+  },
+  {
+    "name": "set-options-explicit-zero-master-weight",
+    "why": "Distinguishes an explicit 0 (a real instruction, e.g. disabling the master key) from an absent field, which must be omitted rather than shown as 0 or null.",
+    "operation": {
+      "type": "setOptions",
+      "params": { "masterWeight": 0 }
+    },
+    "expectDescription": "Set account options: master key weight 0"
   },
   {
     "name": "change-trust",
